@@ -5,67 +5,38 @@
 #include <thread>
 using namespace std;
 
+enum class SystemId {
+    Service1 = 0,
+    Service2 = 1,
+};
+enum class MessageType {
+    PrintString = 0,
+};
+
 class MessageData {
 public:
-    MessageData(int msgType, void* msgData, int msgLength, int msgSrc, int msgDest) {
-        this->msgType = msgType;
-        this->msgData = msgData;
-        this->msgLength = msgLength;
-        this->msgSrc = msgSrc;
-        this->msgDest = msgDest;
-    }
+    MessageData(MessageType msgType, void* msgData, int msgLength, SystemId msgSrc, SystemId msgDest);
+    MessageType GetMsgType() const ;
+    void* GetMsgData() const ;
+    int GetMsgLength() const ;
+    SystemId GetMsgSrc() const ;
+    SystemId GetMsgDest() const ;
 private:
-    int msgType;
+    MessageType msgType;
     void* msgData;
     int msgLength;
-    int msgSrc;
-    int msgDest;
+    SystemId msgSrc;
+    SystemId msgDest;
 };
 
 class IPC
 {
 public:
-    IPC(std::function<bool(const MessageData*)> handler) {
-        this->handler = handler;
-    }
-    bool EnQueue(MessageData* msgData) {
-        if(msgData == nullptr) {
-            return false;
-        }
-        queueIn.push(msgData);
-        return true;
-    }
-    MessageData* DeQueue() {
-        if(queueIn.empty()) return nullptr;
-        MessageData* msgData = queueIn.front();
-        queueIn.pop();
-        return msgData;
-    }
-    bool Start() {
-        running = true;
-        // Start the IPC, initialize threads, etc.
-        // This is a placeholder for actual implementation
-        ipcThread = std::thread([this]() {
-            while (running) {
-                MessageData* msgData = DeQueue();
-                if (msgData != nullptr) {
-                    handler(msgData);
-                    delete msgData; // Clean up after processing
-                }
-            }
-        });
-        if (ipcThread.joinable()) {
-            ipcThread.join(); // Wait for the thread to finish
-        }
-        return true;
-    }
-    bool Stop() {
-        running = false;
-        if (ipcThread.joinable()) {
-            ipcThread.join(); // Wait for the thread to finish
-        }
-        return true;
-    }
+    IPC(std::function<bool(const MessageData*)> handler);
+    bool EnQueue(MessageData* msgData);
+    MessageData* DeQueue();
+    bool Start();
+    bool Stop();
 private:
     std::function<bool(const MessageData*)> handler = nullptr;
     queue<MessageData*> queueIn;
@@ -75,52 +46,27 @@ private:
 
 enum class IMsgDataServiceType {
     InterProcessCommunication,
+    Invalid,
 };
 
 class IMsgDataService {
 public:
-    IMsgDataService(string name, IPC* ipc) : name(name), ipc(ipc) {}
-    virtual bool Send(MessageData* msgData) {
-        return false; // Default implementation, can be overridden
-    }
-    virtual bool Receive(MessageData* msgData) {
-        return false; // Default implementation, can be overridden
-    }
+    IMsgDataService(string name, IPC* ipc);
+    virtual ~IMsgDataService();
+    virtual bool Send(MessageData* msgData);
+    virtual bool Receive(MessageData* msgData);
 protected:
     string name;
+    IMsgDataServiceType type = IMsgDataServiceType::Invalid;
     IPC* ipc = nullptr; // IPC pointer for this service
 };
 
 class InterProcessCommunication : public IMsgDataService {
 public:
-    InterProcessCommunication(string name, IPC* ipc) : IMsgDataService(name, ipc) {}
-    bool Send(MessageData* msgData) override {
-        if(msgData == nullptr) {
-            return false;           
-        }
-        if(target == nullptr) {
-            // Handle the case where target is not set
-            return false;
-        }
-        // Send the message to the target service
-        return target->Receive(msgData);
-
-    }
-    bool Receive(MessageData* msgData) override {
-        if(msgData == nullptr) {
-            return false;
-        }
-        if(ipc != nullptr) {
-            ipc->EnQueue(msgData);
-        } else {
-            // Handle the case where IPC is not initialized
-            return false;
-        }
-        return true;
-    }
-    void SetTarget(InterProcessCommunication* targetService) {
-        target = targetService;
-    }
+    InterProcessCommunication(string name, IPC* ipc);
+    bool Send(MessageData* msgData) override;
+    bool Receive(MessageData* msgData) override;
+    void SetTarget(InterProcessCommunication* targetService);
 private:
     InterProcessCommunication *target;
 };

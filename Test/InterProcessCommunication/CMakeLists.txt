@@ -1,0 +1,14 @@
+project(InterProcessCommunication VERSION 0.1)
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+
+file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp CMAKE_CONFIGURE_DEPEND)
+add_executable(${PROJECT_NAME} ${SRC_FILES})
+
+
+target_link_libraries(${PROJECT_NAME} PRIVATE Service IPC)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/Service/lib ${CMAKE_SOURCE_DIR}/IPC/lib)
